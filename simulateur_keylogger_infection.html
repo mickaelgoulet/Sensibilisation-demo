@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Démo CODIR — Phishing, infection et keylogger simulés</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0c1520;color:#eaf2f8;font-family:"Segoe UI",Arial,sans-serif;overflow-x:hidden}
+header{height:76px;padding:12px 22px;background:#111d2b;border-bottom:1px solid #334;display:flex;align-items:center;justify-content:space-between;gap:20px}
+header h1{font-size:21px;margin:0}
+header small{color:#9fb3c8}
+#statusBadge{background:#1e5f3a;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:700}
+#statusBadge.infected{background:#8b1e1e}
+.stage{height:calc(100vh - 76px);min-height:710px;display:grid;grid-template-columns:43% 14% 43%;position:relative}
+.side{padding:14px}.title{text-align:center;font-weight:700;margin-bottom:8px}.country{font-size:12px;font-weight:400;color:#aab7c4}
+.desktop{height:610px;position:relative;overflow:hidden;border:2px solid #52606d;background:linear-gradient(135deg,#0878b9,#11a5d7 55%,#075b9b);box-shadow:0 5px 25px #0008}
+.icons{position:absolute;left:12px;top:15px;z-index:2}
+.icon{width:88px;text-align:center;margin-bottom:17px;font-size:12px;text-shadow:1px 1px #000;cursor:pointer;color:#fff;padding:4px;border-radius:4px}
+.icon:hover{background:#ffffff1e}
+.ico{font-size:34px}
+.window{display:none;position:absolute;z-index:5;left:105px;top:35px;width:calc(100% - 130px);height:510px;background:#fff;color:#222;border:1px solid #555;box-shadow:0 8px 30px #0008}
+.window.active{display:block}
+.bar{height:32px;background:#eee;border-bottom:1px solid #bbb;display:flex;align-items:center;padding-left:9px;font-size:12px}
+.bar b{flex:1}
+.close{width:40px;text-align:center;font-size:18px;cursor:pointer}
+.close:hover{background:#c33;color:#fff}
+.body{padding:0;height:calc(100% - 32px);overflow:auto}
+.mail-toolbar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #d9d9d9;background:#f6f7f9}
+.mail-toolbar button,.primary-btn,.web button{background:#1769aa;color:#fff;border:0;padding:8px 12px;border-radius:4px;cursor:pointer}
+.mail-layout{display:grid;grid-template-columns:44% 56%;height:calc(100% - 49px)}
+.mail-list{border-right:1px solid #ddd;background:#fbfbfc;overflow:auto}
+.mail-item{padding:12px 14px;border-bottom:1px solid #ececec;cursor:pointer}
+.mail-item:hover{background:#f0f6ff}
+.mail-item.phishing{background:#fff4f4}
+.mail-item .subject{font-weight:700;font-size:13px}
+.mail-item .meta{font-size:11px;color:#666;margin-bottom:4px}
+.mail-item .preview{font-size:12px;color:#444}
+.mail-reader{padding:14px;overflow:auto}
+.mail-reader h3{margin:0 0 10px;font-size:17px}
+.mail-reader .hdr{font-size:12px;color:#444;line-height:1.5;margin-bottom:10px}
+.mail-reader .content{font-size:13px;line-height:1.5;background:#fafafa;border:1px solid #eee;padding:12px;border-radius:6px}
+.notice{margin-top:12px;padding:10px;border-radius:6px;font-size:12px}
+.notice.warn{background:#fff2f2;border:1px solid #f0c1c1;color:#7a1e1e}
+.notice.ok{background:#f2fff4;border:1px solid #cce8d0;color:#22552b}
+.compose{display:none;padding:14px}
+.compose.active{display:block}
+.compose .row{margin-bottom:10px}
+.compose label,.web label,.notewrap label{display:block;margin:0 0 4px;font-size:12px;font-weight:600}
+.compose input,.compose textarea,.web input,.notewrap textarea{width:100%;padding:8px;border:1px solid #aaa;font:14px "Segoe UI";border-radius:4px}
+.compose textarea,.notewrap textarea{resize:none}
+.browserbar{background:#f3f3f3;padding:8px;border-bottom:1px solid #ccc;display:flex;gap:8px;align-items:center}
+.address{flex:1;background:#fff;border:1px solid #bbb;border-radius:15px;padding:6px 10px;font-size:11px}
+.web,.notewrap{padding:16px}
+.web p{font-size:11px;color:#777}
+.notewrap textarea{height:390px;border-radius:0}
+.task{position:absolute;bottom:0;left:0;right:0;height:40px;background:#151515ee;display:flex;align-items:center;gap:15px;padding:0 10px;font-size:12px;color:#fff}
+.task .clock{margin-left:auto}
+.middle{position:relative;background:radial-gradient(circle,#20354b,#101a26);border-left:1px solid #30465c;border-right:1px solid #30465c;overflow:hidden}
+.internet{position:absolute;top:155px;left:50%;transform:translateX(-50%);text-align:center;width:100%}
+.globe{font-size:68px;filter:drop-shadow(0 0 12px #4da3ff)}
+.internet b{display:block;font-size:16px}
+.internet span{font-size:11px;color:#9fb3c8}
+.route{position:absolute;left:5%;right:5%;top:285px;height:4px;background:#52697f}
+.route:before,.route:after{content:"";position:absolute;top:-4px;width:12px;height:12px;background:#55d6ff;border-radius:50%;box-shadow:0 0 12px #55d6ff}
+.route:before{left:0}.route:after{right:0}
+.packet{position:absolute;top:270px;left:-15%;background:#d83b3b;color:white;padding:5px 8px;border-radius:4px;font:10px Consolas;opacity:0}
+.packet.go{animation:travel 1.4s linear}
+@keyframes travel{0%{left:-15%;opacity:1}48%{left:43%;opacity:1}100%{left:105%;opacity:1}}
+.netlabel{position:absolute;top:315px;width:100%;text-align:center;font-size:11px;color:#ffb3b3}
+.legend{position:absolute;bottom:15px;left:50%;transform:translateX(-50%);width:90%;background:#152536;border:1px solid #36516b;padding:8px;text-align:center;font-size:11px;color:#bdd0df}
+.attacker{height:610px;border:2px solid #7b2d2d;background:#080b0f;box-shadow:0 5px 25px #0008;position:relative}
+.attop{height:42px;background:#261313;padding:11px 13px;font-size:13px;border-bottom:1px solid #733}
+.console{height:515px;padding:13px;color:#6cff6c;font:12px Consolas;white-space:pre-wrap;overflow:auto}
+.attfoot{position:absolute;bottom:0;left:0;right:0;background:#141414;padding:7px 12px;color:#aaa;font-size:11px}
+.flag{font-size:20px}
+.help{font-size:12px;color:#c9d8e6;margin-top:8px;text-align:center}
+.muted{opacity:.72}
+@media(max-width:1000px){.stage{grid-template-columns:1fr;height:auto}.middle{height:220px}.internet{top:25px}.route{top:135px}.packet{top:120px}.netlabel{top:160px}.desktop,.attacker{height:590px}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Simulation d'un poste compromis : phishing → infection → interception des saisies</h1>
+    <small>Démonstration pédagogique locale — aucune donnée ne quitte réellement cet ordinateur</small>
+  </div>
+</header>
+
+<div class="stage">
+  <section class="side">
+    <div class="title"><span class="flag">🇫🇷</span> UTILISATEUR <span class="country">— établissement en France</span></div><div id="statusBadge" style="display:inline-block;margin:0 0 8px 50%;transform:translateX(-50%);background:#1e5f3a;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:700;white-space:nowrap">POSTE SAIN — PAS D'INFECTION</div>
+    <div class="desktop">
+      <div class="icons">
+        <div class="icon" data-open="mailWin"><div class="ico">✉️</div>Messagerie</div>
+        <div class="icon" data-open="webWin"><div class="ico">🌐</div>Navigateur</div>
+        <div class="icon" data-open="noteWin"><div class="ico">📝</div>Bloc-notes</div>
+        <div class="icon"><div class="ico">🗑️</div>Corbeille</div>
+      </div>
+
+      <div class="window" id="mailWin">
+        <div class="bar"><b>Messagerie</b><span class="close">×</span></div>
+        <div class="body">
+          <div class="mail-toolbar">
+            <button id="composeBtn">Nouveau message</button>
+            <button id="inboxBtn" style="background:#5f6b7a">Boîte de réception</button>
+            <span style="font-size:12px;color:#555">Simulation d'une messagerie professionnelle</span>
+          </div>
+
+          <div id="mailInboxView" class="mail-layout">
+            <div class="mail-list">
+              <div class="mail-item phishing" id="phishMail">
+                <div class="meta">Support RH • Externe • Urgent</div>
+                <div class="subject">Action requise : consulter le document de mise à jour</div>
+                <div class="preview">Veuillez ouvrir le document joint pour prendre connaissance des nouvelles consignes.</div>
+              </div>
+              <div class="mail-item" data-mail="normal1">
+                <div class="meta">DSI</div>
+                <div class="subject">Réunion sécurité du mardi</div>
+                <div class="preview">Merci de confirmer votre présence à 14h.</div>
+              </div>
+              <div class="mail-item" data-mail="normal2">
+                <div class="meta">Collègue</div>
+                <div class="subject">Compte-rendu projet</div>
+                <div class="preview">Je te transfère le document validé.</div>
+              </div>
+            </div>
+            <div class="mail-reader" id="mailReader">
+              <h3>Boîte de réception</h3>
+              <div class="hdr">Sélectionnez un message à gauche.</div>
+              <div class="content">Le premier message simule un e-mail de phishing. Dans cette démo, son ouverture déclenche l'infection du poste puis l'activation de la collecte côté attaquant.</div>
+            </div>
+          </div>
+
+          <div id="mailComposeView" class="compose">
+            <div class="row"><label>À</label><input data-src="MAIL / DESTINATAIRE" placeholder="destinataire@exemple.fr"></div>
+            <div class="row"><label>Objet</label><input data-src="MAIL / OBJET" placeholder="Objet fictif"></div>
+            <div class="row"><label>Message</label><textarea rows="12" data-src="MAIL / CONTENU" placeholder="Saisissez un message fictif..."></textarea></div>
+            <button class="primary-btn" id="sendMailBtn">Envoyer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="window" id="webWin">
+        <div class="bar"><b>Navigateur</b><span class="close">×</span></div>
+        <div class="browserbar">←　→　↻ <div class="address">🔒 https://portail-sante.demo/connexion</div></div>
+        <div class="body web">
+          <h2 style="color:#1769aa;margin-bottom:8px">Portail de rendez-vous santé</h2>
+          <p>Service fictif pour la démonstration.</p>
+          <label>Adresse e-mail</label>
+          <input data-src="WEB / IDENTIFIANT" placeholder="prenom.nom@exemple.fr">
+          <label>Mot de passe</label>
+          <input type="password" data-src="WEB / MOT DE PASSE" placeholder="Mot de passe fictif">
+          <button id="loginBtn">Se connecter</button>
+        </div>
+      </div>
+
+      <div class="window" id="noteWin">
+        <div class="bar"><b>Sans titre — Bloc-notes</b><span class="close">×</span></div>
+        <div class="body notewrap">
+          <label>Informations personnelles notées sur le poste</label>
+          <textarea data-src="BLOC-NOTES" placeholder="Exemple fictif :
+
+Compte personnel : utilisateur@example.fr
+Mot de passe : Exemple-123!
+
+Banque : identifiant fictif
+Mot de passe : AutreExemple-456!"></textarea>
+        </div>
+      </div>
+
+      <div class="task"><b style="font-size:20px">⊞</b><span>🔎 Rechercher</span><span>📁</span><span>🌐</span><span>✉️</span><span class="clock">11:06<br>15/10/2026</span></div>
+    </div>
+    <div class="help">Scénario : ouverture d'un mail de phishing → infection simulée → interception des saisies sur le poste.</div>
+  </section>
+
+  <section class="middle">
+    <div class="internet"><div class="globe">🌐</div><b>INTERNET</b><span>Réseau public mondial</span></div>
+    <div class="route"></div>
+    <div id="packet" class="packet">DONNÉES CAPTURÉES ➜</div>
+    <div class="netlabel">Exfiltration simulée vers une infrastructure distante</div>
+    <div class="legend">🇫🇷 Poste utilisateur → ouverture du mail piégé → installation simulée du keylogger → Internet → 🌍 console de l'attaquant</div>
+  </section>
+
+  <section class="side">
+    <div class="title"><span class="flag">🌍</span> ATTAQUANT <span class="country">— localisation étrangère fictive</span></div>
+    <div class="attacker">
+      <div class="attop">☠ Console de collecte distante</div>
+      <div id="console" class="console">[SIMULATION D'EXFILTRATION]
+Cible : PC-UTILISATEUR-FR
+Origine : France
+Destination : infrastructure étrangère fictive
+
+Statut : poste non compromis
+Console : inactive, en attente d'infection...</div>
+      <div class="attfoot">Aucun trafic réseau réel n'est généré. Cette console sert uniquement à la démonstration visuelle.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+const consoleEl = document.getElementById('console');
+const packetEl = document.getElementById('packet');
+const statusBadge = document.getElementById('statusBadge');
+const mailInboxView = document.getElementById('mailInboxView');
+const mailComposeView = document.getElementById('mailComposeView');
+const mailReader = document.getElementById('mailReader');
+let infected = false;
+let packetCounter = 0;
+let debounceTimers = new WeakMap();
+
+function animatePacket(label) {
+  packetEl.textContent = label;
+  packetEl.classList.remove('go');
+  void packetEl.offsetWidth;
+  packetEl.classList.add('go');
+}
+
+function appendConsole(text) {
+  consoleEl.textContent += "\n\n" + text;
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+function sendCapturedData(source, value) {
+  if (!infected) return;
+  if (!value) return;
+  packetCounter += 1;
+  animatePacket('DONNÉES CAPTURÉES ➜');
+  setTimeout(() => {
+    appendConsole(`[PAQUET ${String(packetCounter).padStart(3,'0')}] REÇU VIA INTERNET\nTYPE : ${source}\nDONNÉE : ${value}`);
+  }, 1050);
+}
+
+function infectMachine() {
+  if (infected) return;
+  infected = true;
+  statusBadge.textContent = "POSTE INFECTÉ — KEYLOGGER ACTIF";
+  statusBadge.style.background = '#8b1e1e';
+  animatePacket('INFECTION / ACTIVATION ➜');
+  const now = new Date();
+  const activationTime = now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  setTimeout(() => {
+    appendConsole(`[ACTIVATION KEYLOGGER]
+Heure : ${activationTime}
+Localisation : FRANCE
+Nom du PC : PC-FAMILLE-BLANCHARD
+IP publique : 203.0.113.42
+Statut : collecte des saisies ACTIVE`);
+  }, 1050);
+  const notice = mailReader.querySelector('.notice');
+  if (notice) {
+    notice.className = 'notice warn';
+    notice.innerHTML = "<b>Poste infecté (simulation).</b> Les saisies effectuées à partir de maintenant seront visibles dans la console de l'attaquant.";
+  }
+}
+
+// Gestion des fenêtres
+for (const icon of document.querySelectorAll('[data-open]')) {
+  icon.addEventListener('click', () => {
+    document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
+    document.getElementById(icon.dataset.open).classList.add('active');
+  });
+}
+for (const close of document.querySelectorAll('.close')) {
+  close.addEventListener('click', () => close.closest('.window').classList.remove('active'));
+}
+
+// Messagerie : bascule inbox / compose
+function showInbox() {
+  mailInboxView.style.display = 'grid';
+  mailComposeView.classList.remove('active');
+}
+function showCompose() {
+  mailInboxView.style.display = 'none';
+  mailComposeView.classList.add('active');
+}
+document.getElementById('composeBtn').addEventListener('click', showCompose);
+document.getElementById('inboxBtn').addEventListener('click', showInbox);
+showInbox();
+
+// Ouverture des mails
+const normalMails = {
+  normal1: {
+    title: 'Réunion sécurité du mardi',
+    from: 'DSI <dsi@hopital.fr>',
+    body: 'Merci de confirmer votre présence à la réunion sécurité prévue mardi à 14h.'
+  },
+  normal2: {
+    title: 'Compte-rendu projet',
+    from: 'collegue@hopital.fr',
+    body: 'Je te transfère le document validé lors du dernier comité projet.'
+  }
+};
+
+document.getElementById('phishMail').addEventListener('click', () => {
+  mailReader.innerHTML = `
+    <h3>Action requise : consulter le document de mise à jour</h3>
+    <div class="hdr"><b>De :</b> Support RH &lt;support-rh@externe-demo.com&gt;<br><b>À :</b> utilisateur@hopital.fr<br><b>Objet :</b> Action requise : consulter le document de mise à jour</div>
+    <div class="content">
+      Bonjour,<br><br>
+      Une mise à jour de votre dossier RH est disponible. Merci de la consulter via le lien ci-dessous :<br><br>
+      <a href="#" id="maliciousLink" style="color:#1769aa;font-weight:700">Consulter le document sécurisé</a><br><br>
+      Cordialement,<br>Support RH
+    </div>
+    <div class="notice warn">Simulation : le poste reste sain tant que le faux lien n'est pas cliqué.</div>`;
+  document.getElementById('maliciousLink').addEventListener('click', (e) => { e.preventDefault(); infectMachine(); });
+});
+for (const item of document.querySelectorAll('[data-mail]')) {
+  item.addEventListener('click', () => {
+    const m = normalMails[item.dataset.mail];
+    mailReader.innerHTML = `
+      <h3>${m.title}</h3>
+      <div class="hdr"><b>De :</b> ${m.from}<br><b>À :</b> utilisateur@hopital.fr</div>
+      <div class="content">${m.body}</div>
+      <div class="notice ok">Message légitime.</div>`;
+  });
+}
+
+// Capture des saisies après infection uniquement
+for (const field of document.querySelectorAll('[data-src]')) {
+  field.addEventListener('input', () => {
+    clearTimeout(debounceTimers.get(field));
+    debounceTimers.set(field, setTimeout(() => sendCapturedData(field.dataset.src, field.value), 350));
+  });
+}
+
+document.getElementById('sendMailBtn').addEventListener('click', () => sendCapturedData('ACTION UTILISATEUR', 'Clic sur Envoyer dans la messagerie'));
+document.getElementById('loginBtn').addEventListener('click', () => sendCapturedData('ACTION UTILISATEUR', 'Clic sur Se connecter dans le navigateur'));
+</script>
+</body>
+</html>
