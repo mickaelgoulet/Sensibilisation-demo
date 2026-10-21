@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulateur Brute Force - SSI</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101828;color:#101828;font-family:Segoe UI,Arial,sans-serif}
+.top{height:48px;background:#1d2939;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;min-height:calc(100vh - 48px)}
+.card{background:#fff;border:1px solid #475467;border-radius:10px;overflow:hidden}.head{padding:12px 15px;background:#f2f4f7;border-bottom:1px solid #d0d5dd;font-weight:700}
+.loginarea{min-height:560px;background:linear-gradient(135deg,#0969a8,#123e67);display:flex;align-items:center;justify-content:center;padding:30px}
+.login{width:min(390px,100%);background:#ffffffee;padding:28px;border-radius:8px;box-shadow:0 14px 40px #0006;text-align:center}.avatar{font-size:58px}.login input{width:100%;padding:12px;margin:7px 0;border:1px solid #98a2b3;border-radius:5px;font-size:15px}.login button,.btn{border:1px solid #667085;background:#fff;padding:10px 13px;border-radius:6px;cursor:pointer}.login .primary{width:100%;background:#0b5cab;color:white;border:0;margin-top:8px}.state{margin-top:15px;padding:10px;border-radius:6px;background:#f2f4f7;font-size:13px}
+.console{background:#080d13;color:#b7f7c9;min-height:430px;padding:15px;font:13px Consolas,monospace;overflow:auto;line-height:1.55}.bad{color:#ff7b72}.warn{color:#fdb022}.ok{color:#75e0a7}.info{color:#84caff}
+.controls{padding:15px;background:#111923;color:#fff}.controls label{font-size:12px;color:#d0d5dd}.controls select{width:100%;padding:9px;margin:5px 0 10px;border-radius:5px}.buttons{display:flex;gap:8px;flex-wrap:wrap}.red{background:#b42318;color:#fff;border-color:#b42318}.blue{background:#175cd3;color:#fff;border-color:#175cd3}.meter{height:11px;background:#344054;border-radius:8px;overflow:hidden;margin-top:7px}.meter span{display:block;width:0;height:100%;background:#f04438;transition:.15s}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{background:#1d2939;padding:9px;border-radius:6px;text-align:center}.stat b{display:block;font-size:20px}
+.alert{display:none;margin-top:10px;background:#7a271a;border:1px solid #f97066;padding:10px;border-radius:6px}.alert.show{display:block}
+.note{padding:12px 15px;background:#fffaeb;border-top:1px solid #fedf89;font-size:13px}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}.loginarea{min-height:500px}}
+</style>
+</head>
+<body>
+<div class="top"><strong>LAB SSI — SIMULATION BRUTE FORCE</strong><span>Simulation locale — aucun compte réel ciblé</span></div>
+<div class="wrap">
+<section class="card">
+<div class="head">CIBLE FICTIVE — Portail d'authentification</div>
+<div class="loginarea">
+<div class="login">
+<div class="avatar">👤</div><h2>Portail établissement</h2>
+<p>Connexion au compte professionnel</p>
+<input id="user" value="m.dupont" aria-label="Identifiant">
+<input id="pass" type="password" placeholder="Mot de passe" aria-label="Mot de passe">
+<button class="primary" id="manual">Se connecter</button>
+<div class="state" id="loginstate">Compte actif — aucune tentative suspecte détectée.</div>
+</div>
+</div>
+<div class="note"><b>Objectif pédagogique :</b> visualiser une attaque par essais répétés, le verrouillage du compte et l'intérêt de la MFA. Les mots de passe affichés sont une liste fictive intégrée à cette page.</div>
+</section>
+
+<section class="card">
+<div class="head">CONSOLE ATTAQUANT — DÉMONSTRATION</div>
+<div class="console" id="console"><div class="ok">[SYSTEM] Simulateur prêt.</div><div class="info">[TARGET] portail-demo.local</div><div class="info">[ACCOUNT] m.dupont</div><div>[INFO] Aucun trafic réseau réel n'est généré.</div></div>
+<div class="controls">
+<label>Scénario de protection</label>
+<select id="mode">
+<option value="none">Aucune protection — démonstration</option>
+<option value="lock">Verrouillage après 5 échecs</option>
+<option value="mfa">Mot de passe compromis + MFA</option>
+</select>
+<div class="buttons"><button class="btn red" id="start">▶ Lancer la simulation</button><button class="btn" id="stop" disabled>■ Arrêter</button><button class="btn" id="reset">↻ Réinitialiser</button></div>
+<div class="stats"><div class="stat"><b id="tries">0</b>tentatives</div><div class="stat"><b id="rate">0</b>essais/s</div><div class="stat"><b id="result">—</b>résultat</div></div>
+<div class="meter"><span id="meter"></span></div>
+<div class="alert" id="alert"></div>
+</div>
+</section>
+</div>
+<script>
+(function(){
+"use strict";
+var words=["azerty","soleil","bonjour","football","password","marseille","123456","chocolat","vacances","Gerard2026!","Hopital2026!","Montagne65!"];
+var secret="Hopital2026!", i=0, timer=null, running=false;
+function el(id){return document.getElementById(id)}
+function log(text,cls){
+  var d=document.createElement("div");
+  if(cls)d.className=cls;
+  d.textContent="["+new Date().toLocaleTimeString("fr-FR")+"] "+text;
+  el("console").appendChild(d);
+  el("console").scrollTop=el("console").scrollHeight;
+}
+function state(text,bg){
+  el("loginstate").textContent=text;
+  el("loginstate").style.background=bg||"#f2f4f7";
+}
+function finish(result){
+  if(timer){clearInterval(timer);timer=null}
+  running=false; el("start").disabled=false; el("stop").disabled=true; el("result").textContent=result;
+}
+function attempt(){
+  var mode=el("mode").value;
+  if(i>=words.length){log("Liste fictive épuisée.","warn");finish("Échec");return}
+  var w=words[i]; i++;
+  el("tries").textContent=String(i);
+  el("rate").textContent="4";
+  el("meter").style.width=Math.round(i/words.length*100)+"%";
+  log("Essai "+i+" : m.dupont / "+w,w===secret?"ok":"bad");
+  state("Échec d'authentification n° "+i+".","#fff1f0");
+
+  if(mode==="lock" && i>=5){
+    state("COMPTE VERROUILLÉ après 5 échecs.","#fee4e2");
+    el("alert").className="alert show";
+    el("alert").textContent="Défense : le verrouillage interrompt les essais.";
+    log("Compte verrouillé par la politique de sécurité.","ok");
+    finish("Bloqué"); return;
+  }
+  if(w===secret){
+    if(mode==="mfa"){
+      state("Mot de passe correct, mais validation MFA requise.","#fffaeb");
+      el("alert").className="alert show";
+      el("alert").textContent="MFA : le mot de passe seul ne permet pas l'accès.";
+      log("Mot de passe trouvé, accès refusé : second facteur requis.","ok");
+      finish("MFA");
+    } else {
+      state("AUTHENTIFICATION RÉUSSIE — mot de passe trouvé.","#dcfae6");
+      el("alert").className="alert show";
+      el("alert").textContent="Dans ce scénario sans protection, l'attaquant obtient l'accès.";
+      log("Mot de passe fictif trouvé : "+w,"warn");
+      finish("Accès");
+    }
+  }
+}
+el("start").addEventListener("click",function(){
+  if(running)return;
+  running=true;i=0;
+  el("tries").textContent="0";el("rate").textContent="4";el("result").textContent="…";
+  el("meter").style.width="0%";el("alert").className="alert";
+  el("start").disabled=true;el("stop").disabled=false;
+  log("Début de la simulation d'essais répétés.","warn");
+  timer=setInterval(attempt,250);
+});
+el("stop").addEventListener("click",function(){log("Simulation arrêtée par l'opérateur.","ok");finish("Arrêté")});
+el("reset").addEventListener("click",function(){
+  if(timer)clearInterval(timer);timer=null;running=false;i=0;
+  el("tries").textContent="0";el("rate").textContent="0";el("result").textContent="—";
+  el("meter").style.width="0%";el("alert").className="alert";
+  el("start").disabled=false;el("stop").disabled=true;
+  state("Compte actif — aucune tentative suspecte détectée.");
+  el("console").innerHTML="<div class='ok'>[SYSTEM] Simulateur prêt.</div><div class='info'>[TARGET] portail-demo.local</div><div class='info'>[ACCOUNT] m.dupont</div><div>[INFO] Aucun trafic réseau réel n'est généré.</div>";
+});
+el("manual").addEventListener("click",function(){
+  if(el("pass").value===secret)state("Connexion locale simulée réussie.","#dcfae6");
+  else state("Identifiant ou mot de passe incorrect.","#fff1f0");
+});
+})();
+</script>
+</body></html>
